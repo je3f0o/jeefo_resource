@@ -1,6 +1,6 @@
 {
   "name": "jeefo_resource",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Part of jeefo framework",
   "author": {
     "name": "je3f0o",
@@ -16,15 +16,12 @@
     "url": "https://github.com/je3f0o/jeefo_resource.git"
   },
   "keywords": [
-    "q",
     "http",
     "jeefo",
-    "promise",
     "resource",
+	"framework",
     "XMLHttpRequest"
   ],
-  "devDependencies": {},
-  "dependencies": {
-    "jeefo_q" : "^0.0.1"
-  }
+  "dependencies": {},
+  "devDependencies": {}
 }
