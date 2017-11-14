@@ -1,94 +1,229 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : index.js
 * Created at  : 2017-07-16
-* Updated at  : 2017-08-24
+* Updated at  : 2017-11-13
 * Author      : jeefo
 * Purpose     :
 * Description :
 _._._._._._._._._._._._._._._._._._._._._.*/
 // ignore:start
+"use strict";
 
 /* globals */
 /* exported */
 
+var DONE = PP.define("DONE", 4);
+var OK   = PP.define("OK", 200);
+
 // ignore:end
 
-var $q = require("jeefo_q");
+var $q     = require("jeefo_q"),
+	assign = require("jeefo_utils/object/assign");
 
-var JSON_STRING = JSON.stringify;
-var DONE = 4; // readyState 4 means the request is done.
-var OK = 200; // status 200 is a successful return.
+var JSON_PARSE     = JSON.parse;
+var JSON_STRINGIFY = JSON.stringify;
 
-var JS   = 1,
-	TEXT = 2;
+var object_keys = Object.keys;
 
-var ajax = function (method, path, data, mime) {
-	var xhr      = new XMLHttpRequest(),
-		deferred = $q.defer();
+var uri_encode = function (data) {
+	var i = 0, keys = object_keys(data), result = '';
 
-	xhr.onreadystatechange = function () {
-		if (xhr.readyState === DONE) {
-			if (xhr.status === OK) {
-				switch (mime) {
-					case JS   : 
-					case TEXT :
-						deferred.resolve(xhr.responseText);
-						break;
-					default:
-						try {
-							var json = JSON.parse(xhr.responseText);
-							deferred.resolve(json);
-						} catch (e) {
-							deferred.reject("Parse Error: " + xhr.status);
-						}
-				}
-			} else {
-				// An error occurred during the request.
-				deferred.reject("Error: " + xhr.status);
+	for (; i < keys.length; ++i) {
+		if (result) {
+			result += '&';
+		}
+		result += `${ encodeURIComponent(keys[i]) }=${ encodeURIComponent(data[keys[i]]) }`;
+	}
+
+	return result;
+};
+
+var response_text = function (status, headers, text) {
+	return text;
+};
+
+var build_url = function (url, params) {
+	if (params) {
+		url += '?' + uri_encode(params);
+	}
+
+	return url;
+};
+
+var _response_handler = function (xhr, deferred, response_handler) {
+	if (xhr.status === OK) {
+		deferred.resolve(response_handler(xhr.status, xhr.getAllResponseHeaders(), xhr.responseText));
+	} else {
+		deferred.reject({
+			error             : "response_error",
+			status            : xhr.status,
+			error_description : "Response code wasn't 200",
+		});
+	}
+};
+
+var Request = function (method, url, config, defaults) {
+	if (! config) {
+		config = {};
+	}
+
+	this.method = method;
+	this.config = {
+		url              : url,
+		params           : config.params,
+		method           : method,
+		headers          : assign({}, defaults.headers, config.headers),
+		content_type     : config.content_type     || defaults.content_type,
+		response_handler : config.response_handler || defaults.response_handler,
+		with_credentials : config.with_credentials !== void 0 ?
+			config.with_credentials : defaults.with_credentials,
+	};
+};
+
+Request.prototype = {
+	intercept : function (interceptors) {
+		for (var i = 0; i < interceptors.length; ++i) {
+			if (interceptors[i].request) {
+				this.config = interceptors[i].request(this.config);
 			}
 		}
-	};
+	},
+	send : function (data) {
+		var	i        = 0,
+			xhr      = new XMLHttpRequest(),
+			config   = this.config,
+			headers  = config.headers,
+			keys     = object_keys(headers),
+			deferred = $q.defer();
 
-	xhr.open(method, path, true);
-	switch (mime) {
-		case JS   : xhr.overrideMimeType("text/javascript"); break;
-		case TEXT : break;
-		default :
-			xhr.setRequestHeader("Content-Type", "application/json");
-	}
-	xhr.send(data);
+		xhr.open(this.method, build_url(config.url, config.params), true);
 
-	return deferred.promise;
+		for (; i < keys.length; ++i) {
+			xhr.setRequestHeader(keys[i], headers[keys[i]]);
+		}
+
+		xhr.withCredentials = config.with_credentials;
+
+		if (data) {
+			xhr.setRequestHeader("Content-Type", config.content_type);
+
+			switch (config.content_type) {
+				case "application/json" :
+					data = JSON_STRINGIFY(data);
+					break;
+				case "application/x-www-form-urlencoded" :
+					data = uri_encode(data);
+					break;
+				default:
+					deferred.reject({
+						error             : "invalid_content_type",
+						error_description : "Invalid content type"
+					});
+			}
+		}
+
+		xhr.onreadystatechange = function () {
+			if (this.readyState === DONE) {
+				_response_handler(this, deferred, config.response_handler);
+			}
+		};
+
+		xhr.send(data || null);
+
+		return deferred.promise;
+	},
+	upload : function (config) {
+		var i        = 0,
+			xhr      = new XMLHttpRequest(),
+			form     = new FormData(),
+			fields   = config.fields,
+			_config  = this.config,
+			headers  = _config.headers,
+			keys     = object_keys(headers),
+			deferred = $q.defer();
+		
+		xhr.upload.onload     = config.load;
+		xhr.upload.onprogress = config.progress;
+
+		xhr.open(
+			this.method || "POST",
+			build_url(_config.url, _config.params),
+			true
+		);
+
+		for (; i < keys.length; ++i) {
+			xhr.setRequestHeader(keys[i], headers[keys[i]]);
+		}
+
+		xhr.withCredentials = _config.with_credentials;
+
+		xhr.onreadystatechange = function () {
+			if (this.readyState === DONE) {
+				_response_handler(this, deferred, _config.response_handler);
+			}
+		};
+
+		form.append("file", config.file);
+
+		if (fields) {
+			keys = object_keys(fields);
+			i = keys.length;
+			while (i--) {
+				form.append(keys[i], fields[keys[i]]);
+			}
+		}
+
+		xhr.send(form);
+
+		return deferred.promise;
+	},
 };
 
 module.exports = {
-	API_PREFIX : '',
-	get_text : function (path) {
-		return ajax("GET", path, null, TEXT);
+	defaults : {
+		headers          : {},
+		content_type     : "application/json",
+		response_handler : function (status, headers, data) {
+			return JSON_PARSE(data);
+		},
 	},
-	get_js_code : function (path) {
-		return ajax("GET", path, null, JS);
+	interceptors : [],
+
+	get : function (url, config) {
+		return this.request("GET", url, config);
 	},
-	get : function (path) {
-		return ajax("GET", path, null);
+	get_text : function (url, config) {
+		if (! config) {
+			config = {};
+		}
+		config.response_handler = response_text;
+
+		return this.get(url, config);
 	},
-	get_all : function (urls) {
-		var promises = urls.split(/\s*,\s*/).map(this.get);
-		return $q.all(promises);
+
+	save : function (url, data, config) {
+		return this.request("POST", url, config, data);
 	},
-	get_api : function (path) {
-		return this.get(this.API_PREFIX + path);
+
+	update : function (url, data, config) {
+		return this.request("PUT", url, config, data);
 	},
-	put : function (path, data) {
-		return ajax("PUT", path, JSON_STRING(data));
+
+	request : function (method, url, config, data) {
+		var request = new Request(method, url, config, this.defaults);
+		request.intercept(this.interceptors);
+
+		return request.send(data);
 	},
-	save : function (path, data) {
-		return ajax("POST", path, JSON_STRING(data));
-	},
-	update_api : function (path, data) {
-		return this.put(this.API_PREFIX + path, data);
-	},
-	save_api : function (path, data) {
-		return this.save(this.API_PREFIX + path, data);
+	//get_all : function (urls) {
+		//var promises = urls.split(/\s*,\s*/).map(this.get);
+		//return $q.all(promises);
+	//},
+
+	upload : function (url, config) {
+		var request = new Request(null, url, config, this.defaults);
+		request.intercept(this.interceptors);
+
+		return request.upload(config);
 	}
 };
