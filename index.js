@@ -1,7 +1,7 @@
 /* -.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.-.
 * File Name   : index.js
 * Created at  : 2017-07-16
-* Updated at  : 2017-11-13
+* Updated at  : 2017-11-16
 * Author      : jeefo
 * Purpose     :
 * Description :
@@ -88,6 +88,7 @@ Request.prototype = {
 			}
 		}
 	},
+
 	send : function (data) {
 		var	i        = 0,
 			xhr      = new XMLHttpRequest(),
@@ -132,6 +133,7 @@ Request.prototype = {
 
 		return deferred.promise;
 	},
+
 	upload : function (config) {
 		var i        = 0,
 			xhr      = new XMLHttpRequest(),
@@ -207,6 +209,10 @@ module.exports = {
 
 	update : function (url, data, config) {
 		return this.request("PUT", url, config, data);
+	},
+
+	$delete : function (url, data, config) {
+		return this.request("DELETE", url, config, data);
 	},
 
 	request : function (method, url, config, data) {
