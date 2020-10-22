@@ -1,27 +1,33 @@
 {
-  "name": "jeefo_resource",
-  "version": "0.0.4",
-  "description": "Part of jeefo framework",
-  "author": {
-    "name": "je3f0o",
-    "email": "je3f0o@gmail.com"
-  },
-  "homepage": "https://github.com/je3f0o/jeefo_resource",
-  "license": "MIT",
-  "copyright": "2017",
-  "main": "index.js",
-  "scripts": {},
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/je3f0o/jeefo_resource.git"
-  },
-  "keywords": [
-    "http",
-    "jeefo",
-    "resource",
-	"framework",
-    "XMLHttpRequest"
-  ],
-  "dependencies": {},
-  "devDependencies": {}
+    "name": "@jeefo/resource",
+    "version": "0.0.5",
+    "description": "Part of jeefo framework. (under developing...)",
+    "author": {
+        "name": "je3f0o",
+        "email": "je3f0o@gmail.com"
+    },
+    "homepage": "https://github.com/je3f0o/jeefo_resource",
+    "license": "MIT",
+    "copyright": "2017",
+    "main": "index.js",
+    "scripts": {
+        "save": "git add . && git c \"`date`\" && git p",
+        "save_version": "git add . && git c \"v$npm_package_version\" && git p",
+        "jeefo_publish": "node node_modules/@jeefo/publish/publish.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git@github.com:je3f0o/jeefo_resource.git"
+    },
+    "keywords": [
+        "jeefo",
+        "je3f0o",
+        "resource",
+        "fetch API"
+    ],
+    "dependencies": {},
+    "devDependencies": {
+        "@jeefo/publish": "0.0.31",
+        "@jeefo/utils": "0.0.9"
+    }
 }
